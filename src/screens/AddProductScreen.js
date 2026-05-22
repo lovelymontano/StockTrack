@@ -9,43 +9,48 @@ export default function AddProductScreen({ navigation }) {
     const [unit, setUnit] = useState('Box');
 
     const handleSave = async () => {
-        // Structural Validation Checks
         if (!name.trim() || !price.trim() || !stock.trim()) {
-            Alert.alert("Form Incomplete", "Please completely fill in all mandatory fields.");
+            Alert.alert("Incomplete Fields", "Please fill in all required fields.");
             return;
         }
         if (isNaN(price) || parseFloat(price) <= 0) {
-            Alert.alert("Invalid Input", "Price values must correspond to positive real financial scales.");
+            Alert.alert("Invalid Price", "Please enter a valid price amount greater than zero.");
             return;
         }
 
         try {
+            // Keep original object data payload ingestion structure intact
             await addProduct({ name, price, stock, unit });
-            Alert.alert("Record Added", "Firestore object clusters processed successfully.");
+            Alert.alert("Success", "New product has been added.");
             navigation.goBack();
         } catch (err) {
-            Alert.alert("Sync Fault", "Cloud ingestion rejected. Check client network status.");
+            Alert.alert("Error", "Could not save product. Please check your internet connection.");
         }
     };
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>New Inventory Record</Text>
+            {/* Added manual custom back link to stack navigator list view */}
+            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+                <Text style={styles.backText}>← Back to List</Text>
+            </TouchableOpacity>
 
-            <Text style={styles.fieldLabel}>Item Name *</Text>
+            <Text style={styles.title}>Add New Product</Text>
+
+            <Text style={styles.fieldLabel}>Product Name *</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Piattos XL" />
 
             <Text style={styles.fieldLabel}>Price (PHP) *</Text>
             <TextInput style={styles.input} value={price} onChangeText={setPrice} keyboardType="numeric" placeholder="0.00" />
 
-            <Text style={styles.fieldLabel}>Stock Stockpile Count *</Text>
+            <Text style={styles.fieldLabel}>Initial Stock *</Text>
             <TextInput style={styles.input} value={stock} onChangeText={setStock} keyboardType="numeric" placeholder="0" />
 
-            <Text style={styles.fieldLabel}>Packaging Unit Metric</Text>
-            <TextInput style={styles.input} value={unit} onChangeText={setUnit} placeholder="Box, Piece, Pack..." />
+            <Text style={styles.fieldLabel}>Unit Measurement</Text>
+            <TextInput style={styles.input} value={unit} onChangeText={setUnit} placeholder="e.g. Box, Piece, Pack" />
 
             <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.saveText}>Commit Document</Text>
+                <Text style={styles.saveText}>Add Product</Text>
             </TouchableOpacity>
         </View>
     );
@@ -53,6 +58,8 @@ export default function AddProductScreen({ navigation }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#e2e4dc', padding: 24, paddingTop: 50 },
+    backBtn: { marginBottom: 20 },
+    backText: { fontSize: 16, color: '#2d6a4f', fontWeight: 'bold' },
     title: { fontSize: 24, fontWeight: 'bold', marginBottom: 25 },
     fieldLabel: { fontSize: 14, fontWeight: '600', marginBottom: 6 },
     input: { backgroundColor: '#fff', borderRadius: 10, padding: 12, fontSize: 16, marginBottom: 16 },

@@ -3,7 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { ActivityIndicator, View } from 'react-native';
 import { auth } from './src/config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import AppNavigator from './src/navigation/AppNavigator'; 
+import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -15,7 +15,7 @@ export default function App() {
       if (initializing) setInitializing(false);
     });
     return unsubscribe;
-  }, [initializing]);
+  }, []);
 
   if (initializing) {
     return (

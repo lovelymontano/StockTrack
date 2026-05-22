@@ -2,7 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-// I-import ang lahat ng iyong screens mula sa tamang paths
+// Import all screens from their respective paths
 import HomeScreen from '../screens/HomeScreen';
 import ExploreScreen from '../screens/ExploreScreen';
 import DetailScreen from '../screens/DetailScreen';
@@ -14,7 +14,7 @@ import AuthScreen from '../screens/AuthScreen';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Bottom Tab layout para sa main screens
+// Bottom Tab layout managing primary app views
 function MainTabs() {
     return (
         <Tab.Navigator
@@ -32,17 +32,14 @@ function MainTabs() {
     );
 }
 
-// Ang mismong Navigator component na i-eexport natin
+// Global root navigation layer handling stacks and modals
 export default function AppNavigator() {
     return (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {/* 1. Unang lilitaw (Welcome Splash Screen) */}
-            <Stack.Screen name="Welcome" component={HomeScreen} />
-
-            {/* 2. Main Tab wrapper (Home, Inventory Feed, Profile) */}
+            {/* Set MainDashboard as the initial screen so bottom tabs render immediately on launch */}
             <Stack.Screen name="MainDashboard" component={MainTabs} />
 
-            {/* 3. Sub-pages / Forms */}
+            {/* Application forms and supplementary screens */}
             <Stack.Screen name="Auth" component={AuthScreen} />
             <Stack.Screen name="Detail" component={DetailScreen} />
             <Stack.Screen name="AddProduct" component={AddProductScreen} />

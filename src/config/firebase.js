@@ -1,8 +1,9 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { initializeAuth, getReactNativePersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // Dito tinatawag ang mga tinago mong credentials mula sa .env file
 import { 
@@ -27,9 +28,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // I-on ang Auth persistence para maalala ng phone ang login session ng salesman
-const auth = initializeAuth(app, {
-  persistence: getReactNativePersistence(AsyncStorage)
-});
+// Use browserLocalPersistence on web, AsyncStorage-backed persistence on native
+const auth = Platform.OS === 'web'
+  ? initializeAuth(app, { persistence: browserLocalPersistence })
+  : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
 
 // I-initialize ang Cloud Database at Storage services
 const db = getFirestore(app);

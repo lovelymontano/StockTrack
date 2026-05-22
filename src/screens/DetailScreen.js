@@ -16,19 +16,23 @@ export default function DetailScreen({ route, navigation }) {
                 <Text style={styles.label}>Product Name</Text>
                 <Text style={styles.value}>{product.name}</Text>
 
-                <Text style={styles.label}>Market Price</Text>
+                {/* Simplified labels from Market Price */}
+                <Text style={styles.label}>Price</Text>
                 <Text style={styles.value}>₱ {parseFloat(product.price).toFixed(2)}</Text>
 
-                <Text style={styles.label}>Current Inventory Volume</Text>
+                {/* Simplified labels from Current Inventory Volume */}
+                <Text style={styles.label}>Available Stock</Text>
                 <Text style={styles.value}>{product.stock} {product.unit}</Text>
             </View>
 
             {isAuthorized && (
                 <TouchableOpacity
                     style={styles.editBtn}
+                    // Keep core navigation parameters intact
                     onPress={() => navigation.navigate('ManageInventory', { product })}
                 >
-                    <Text style={styles.editBtnText}>Modify Inventory Data</Text>
+                    {/* Simplified action string from Modify Inventory Data */}
+                    <Text style={styles.editBtnText}>Edit Product</Text>
                 </TouchableOpacity>
             )}
         </View>
@@ -40,7 +44,7 @@ const styles = StyleSheet.create({
     backBtn: { marginBottom: 30 },
     backText: { fontSize: 16, color: '#2d6a4f', fontWeight: 'bold' },
     infoBox: { backgroundColor: '#fff', padding: 24, borderRadius: 20, marginBottom: 20 },
-    label: { fontSize: 14, color: '#777', uppercase: true, letterSpacing: 0.5, marginBottom: 4 },
+    label: { fontSize: 14, color: '#777', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
     value: { fontSize: 22, fontWeight: 'bold', color: '#111', marginBottom: 20 },
     editBtn: { backgroundColor: '#1e7e34', padding: 16, borderRadius: 12, alignItems: 'center' },
     editBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
