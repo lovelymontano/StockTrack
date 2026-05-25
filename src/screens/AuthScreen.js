@@ -55,6 +55,14 @@ export default function AuthScreen({ navigation }) {
 
     return (
         <View style={styles.container}>
+            {/* UPDATED: Clean text navigation link layout using 'Back' text natively */}
+            <TouchableOpacity
+                style={styles.backButton}
+                onPress={() => navigation.goBack()}
+            >
+                <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+
             {/* Custom Warning Ribbon Notification Banner */}
             {warningMessage ? (
                 <View style={styles.warningBanner}>
@@ -79,8 +87,8 @@ export default function AuthScreen({ navigation }) {
             </View>
 
             {/* Standard Text input layout containers */}
-            <TextInput style={styles.input} placeholder="Account Email Reference" placeholderTextColor="#888" value={email} onChangeText={setEmail} autoCapitalize="none" />
-            <TextInput style={styles.input} placeholder="Security Access Code Phrase" placeholderTextColor="#888" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
+            <TextInput style={styles.input} placeholder="Registered Email Address" placeholderTextColor="#888" value={email} onChangeText={setEmail} autoCapitalize="none" />
+            <TextInput style={styles.input} placeholder="Security Password" placeholderTextColor="#888" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
 
             {/* Conditional Input Field: Displays ONLY when the Register Tab is active */}
             {!isLoginView && (
@@ -103,6 +111,10 @@ export default function AuthScreen({ navigation }) {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#e2e4dc', padding: 24, justifyContent: 'center' },
+
+    // Symmetrical alignment properties to support look-and-feel formatting rules
+    backButton: { position: 'absolute', top: 50, left: 24, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, backgroundColor: '#d0d4c8' },
+    backButtonText: { color: '#1b4332', fontSize: 14, fontWeight: '700' },
 
     // Warning banner styling built within the app layout aesthetics
     warningBanner: { backgroundColor: '#b7094c', padding: 12, borderRadius: 15, marginBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 1.41, elevation: 2 },

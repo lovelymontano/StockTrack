@@ -1,56 +1,190 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { auth } from '../config/firebase';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import { auth, db } from '../config/firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { cacheProductsLocally } from '../services/cacheService';
+import { registerForPushNotificationsAsync, sendOutOfStockAlert } from '../services/notificationService';
+import { getUserRole } from '../services/authService';
+import { useIsFocused } from '@react-navigation/native';
 
 export default function HomeScreen({ navigation }) {
-    // Check if a user session exists in Firebase Authentication
-    const isLoggedIn = auth.currentUser !== null;
+    const isFocused = useIsFocused();
+    
+    // SECTION 7.4 States: Storage architectures to compute analytical values
+    const [userRole, setUserRole] = useState('guest');
+    const [roleLoading, setRoleLoading] = useState(true);
+    
+    // Quantitative structural dataset parameters
+    const [totalProducts, setTotalProducts] = useState(0);
+    const [totalValue, setTotalValue] = useState(0);
+    const [lowStockCount, setLowStockCount] = useState(0);
+
+    useEffect(() => {
+        // Step A: Request device permissions for system notifications upon landing
+        registerForPushNotificationsAsync();
+
+        // Step B: Setup Real-time data sync listener with Firestore
+        const productsRef = collection(db, 'products');
+
+        const unsubscribe = onSnapshot(productsRef, (snapshot) => {
+            const productList = [];
+            let computedTotalValue = 0;
+            let computedLowStock = 0;
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const productItem = { id: doc.id, ...data };
+                productList.push(productItem);
+
+                // SECTION 7.4 Mathematical Computations:
+                const stockNum = parseInt(data.stock || 0);
+                const priceNum = parseFloat(data.price || 0);
+
+                // 1. Accumulate Total Financial Value of current supermarket assets
+                computedTotalValue += (stockNum * priceNum);
+
+                // 2. Compute critical inventory thresholds
+                if (stockNum <= 3) {
+                    computedLowStock++;
+                }
+
+                // Step C: If any product changes state and drops strictly to 0, fire immediate local banner alert
+                if (stockNum === 0) {
+                    sendOutOfStockAlert(data.name);
+                }
+            });
+
+            // Update analytical states across the dashboard interface
+            setTotalProducts(productList.length);
+            setTotalValue(computedTotalValue);
+            setLowStockCount(computedLowStock);
+
+            // Step D: Write sync block down into our secure hardware cacheService
+            cacheProductsLocally(productList);
+        }, (error) => {
+            console.error("Realtime sync failed, reverting to local architecture context:", error);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // Monitor authorization shifts every time window focus context triggers
+    useEffect(() => {
+        const checkRole = async () => {
+            if (auth.currentUser) {
+                try {
+                    const role = await getUserRole(auth.currentUser.uid);
+                    setUserRole(role);
+                } catch (e) {
+                    console.error("Role lookup blocked:", e);
+                    setUserRole('guest');
+                }
+            } else {
+                setUserRole('guest');
+            }
+            setRoleLoading(false);
+        };
+
+        if (isFocused) {
+            checkRole();
+        }
+    }, [isFocused, auth.currentUser]);
 
     const handleStart = () => {
-        // Shift active tab target directly to the Inventory module view
         navigation.navigate('Inventory');
     };
 
     return (
-        <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} bounces={false}>
             <View style={styles.headerRow}>
                 <View style={styles.brandContainer}>
                     <Text style={styles.logoIcon}>📈</Text>
                     <Text style={styles.brandText}>STOCKTRACK</Text>
                 </View>
-                <Text style={[styles.loginStatus, { color: isLoggedIn ? 'green' : 'red' }]}>
-                    {isLoggedIn ? 'Logged in' : 'Not Logged in'}
-                </Text>
+                {roleLoading ? (
+                    <ActivityIndicator size="small" color="#2d6a4f" />
+                ) : (
+                    <Text style={[styles.loginStatus, { color: userRole === 'staff' ? '#2d6a4f' : '#b7094c' }]}>
+                        {userRole === 'staff' ? 'Staff Mode' : 'Guest Buyer'}
+                    </Text>
+                )}
             </View>
 
-            {/* Centered layout block for the main dashboard welcome text */}
-            <View style={styles.heroSection}>
-                <Text style={styles.welcomeTitle}>Welcome to {'\n'}StockTrack!</Text>
-                <Text style={styles.welcomeSubtitle}>Your simple inventory companion.</Text>
-            </View>
+            {/* SECTION 7.4: DYNAMIC DASHBOARD DISPLAY CONTROL LAYER */}
+            {userRole === 'staff' ? (
+                <View style={styles.analyticsWrapper}>
+                    <Text style={styles.sectionDashboardTitle}>Supermarket Metrics Dashboard</Text>
+                    <Text style={styles.sectionDashboardSubtitle}>Real-time cloud statistical query parameters</Text>
+                    
+                    {/* Primary Large Highlight Metric Panel */}
+                    <View style={styles.mainValueCard}>
+                        <Text style={styles.mainValueLabel}>Total Estimated Inventory Capital</Text>
+                        <Text style={styles.mainValueText}>₱ {totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                    </View>
+
+                    {/* Secondary Metrics Layout Row */}
+                    <View style={styles.statsRow}>
+                        <View style={styles.smallStatCard}>
+                            <Text style={styles.smallCardIcon}>📦</Text>
+                            <Text style={styles.smallCardValue}>{totalProducts}</Text>
+                            <Text style={styles.smallCardLabel}>Unique SKUs Active</Text>
+                        </View>
+
+                        <View style={[styles.smallStatCard, lowStockCount > 0 && styles.lowStockAlertCard]}>
+                            <Text style={styles.smallCardIcon}>⚠️</Text>
+                            <Text style={[styles.smallCardValue, lowStockCount > 0 && styles.lowStockAlertText]}>
+                                {lowStockCount}
+                            </Text>
+                            <Text style={styles.smallCardLabel}>Critical Low / Out Items</Text>
+                        </View>
+                    </View>
+                </View>
+            ) : (
+                /* Standard Welcome Block rendered specifically for basic guest consumer interfaces */
+                <View style={styles.heroSection}>
+                    <Text style={styles.welcomeTitle}>Welcome to {'\n'}StockTrack!</Text>
+                    <Text style={styles.welcomeSubtitle}>Your simple inventory companion.</Text>
+                </View>
+            )}
 
             <TouchableOpacity style={styles.button} onPress={handleStart}>
-                <Text style={styles.buttonText}>Start Browsing</Text>
+                <Text style={styles.buttonText}>
+                    {userRole === 'staff' ? 'Manage Inventory Sheets' : 'Start Browsing Products'}
+                </Text>
                 <Text style={styles.arrowIcon}>〉</Text>
             </TouchableOpacity>
-        </View>
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#e2e4dc', paddingHorizontal: 24, paddingVertical: 50, justifyContent: 'space-between' },
-    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    scrollContainer: { flexGrow: 1, backgroundColor: '#e2e4dc', paddingHorizontal: 24, paddingVertical: 50, justifyContent: 'space-between' },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
     brandContainer: { flexDirection: 'row', alignItems: 'center' },
     logoIcon: { fontSize: 24, marginRight: 6 },
     brandText: { fontSize: 20, fontWeight: 'bold', color: '#162b32', letterSpacing: 1 },
-    loginStatus: { fontSize: 16, fontWeight: '600' },
+    loginStatus: { fontSize: 14, fontWeight: '700', textTransform: 'uppercase' },
 
-    // Configured layout properties to center elements visually within the parent container
-    heroSection: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    heroSection: { flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 40 },
     welcomeTitle: { fontSize: 36, fontWeight: 'bold', color: '#000', lineHeight: 44, marginBottom: 12, textAlign: 'center' },
     welcomeSubtitle: { fontSize: 16, color: '#444', textAlign: 'center' },
 
-    button: { backgroundColor: '#2d6a4f', paddingVertical: 16, paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    // Section 7.4 Dashboard Component Layout Configurations
+    analyticsWrapper: { flex: 1, justifyContent: 'center', marginVertical: 20 },
+    sectionDashboardTitle: { fontSize: 22, fontWeight: 'bold', color: '#162b32', marginBottom: 4 },
+    sectionDashboardSubtitle: { fontSize: 13, color: '#666', marginBottom: 20 },
+    mainValueCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2, borderWidth: 1, borderColor: '#c0c4b8' },
+    mainValueLabel: { fontSize: 12, fontWeight: '600', color: '#666', textTransform: 'uppercase', marginBottom: 6 },
+    mainValueText: { fontSize: 28, fontWeight: 'bold', color: '#2d6a4f' },
+    statsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+    smallStatCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, flex: 1, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 2 },
+    lowStockAlertCard: { backgroundColor: '#fde2e4', borderWidth: 1, borderColor: '#f8b4b9' },
+    smallCardIcon: { fontSize: 22, marginBottom: 6 },
+    smallCardValue: { fontSize: 22, fontWeight: 'bold', color: '#111' },
+    lowStockAlertText: { color: '#b7094c' },
+    smallCardLabel: { fontSize: 11, color: '#666', textAlign: 'center', marginTop: 4, fontWeight: '500' },
+
+    button: { backgroundColor: '#2d6a4f', paddingVertical: 16, paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
     buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
     arrowIcon: { color: '#fff', fontSize: 18 }
 });

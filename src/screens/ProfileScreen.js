@@ -50,12 +50,28 @@ export default function ProfileScreen({ navigation }) {
 
     const handleLogAction = async () => {
         if (user) {
+            setIsLoading(true);
             try {
+                // SECTION 7.1 Lifecycle Management: Hard logout sequence execution
                 await logoutUser();
+
+                // Clear local state variables instantly to drop current credentials
+                setName('Default Name');
+                setPosition('Default Position');
+                setStartYear('Default Year');
+
+                console.log("StockTrack Session Manager: Token dropped. Downgrading to anonymous Buyer profile.");
+
                 // Route safely out to the main home interface module view
-                navigation.navigate('MainDashboard', { screen: 'Home' });
+                // Uses replace/reset navigation structure to guarantee state clearance
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'MainDashboard', params: { screen: 'Home' } }],
+                });
             } catch (err) {
                 console.error("Logout execution failure:", err);
+            } finally {
+                setIsLoading(false);
             }
         } else {
             navigation.navigate('Auth');
@@ -98,14 +114,14 @@ export default function ProfileScreen({ navigation }) {
 
             <View style={styles.card}>
                 <Text style={styles.label}>Account Email</Text>
-                <Text style={styles.value}>{user ? user.email : 'Unidentified System Guest'}</Text>
+                <Text style={styles.value}>{user ? user.email : 'Buyer'}</Text>
 
                 <View style={styles.divider} />
 
                 {isLoading ? (
                     <View style={styles.loadingBox}>
                         <ActivityIndicator size="small" color="#2d6a4f" />
-                        <Text style={styles.loadingText}>Updating cloud account token...</Text>
+                        <Text style={styles.loadingText}>Updating session state parameters...</Text>
                     </View>
                 ) : !isEditing ? (
                     <>
@@ -150,6 +166,7 @@ export default function ProfileScreen({ navigation }) {
             <TouchableOpacity
                 style={[styles.btn, { backgroundColor: user ? '#b7094c' : '#2d6a4f' }]}
                 onPress={handleLogAction}
+                disabled={isLoading}
             >
                 <Text style={styles.btnText}>
                     {user ? 'Log Out' : 'Initialize Credentials (Login)'}

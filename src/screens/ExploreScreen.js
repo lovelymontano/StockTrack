@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { subscribeToProducts } from '../services/productService';
 import { auth } from '../config/firebase';
+import { getUserRole } from '../services/authService';
 
 export default function ExploreScreen({ navigation }) {
     const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [userRole, setUserRole] = useState('guest');
 
     // Track the selected inventory unit classification tab item
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -15,43 +17,74 @@ export default function ExploreScreen({ navigation }) {
     // Dynamic state tracker to manage the warning message layout on screen
     const [accessDeniedMessage, setAccessDeniedMessage] = useState('');
 
+    // NEW STATE FOR SECTION 7.2: Cycles criteria parameters ('none', 'low-to-high', 'high-to-low')
+    const [stockSortOrder, setStockSortOrder] = useState('none');
+
     useEffect(() => {
+        // Step A: Real-time product subscription stream
         const unsubscribe = subscribeToProducts(
             (data) => { setProducts(data); setLoading(false); },
             (err) => { setError("Database sync failed."); setLoading(false); }
         );
+
+        // Step B: Role-Based Access checking stream loop
+        const checkUserAuthority = async () => {
+            if (auth.currentUser) {
+                const role = await getUserRole(auth.currentUser.uid);
+                setUserRole(role);
+            } else {
+                setUserRole('guest');
+            }
+        };
+
+        checkUserAuthority();
         return () => unsubscribe();
-    }, []);
+    }, [auth.currentUser]);
 
-    // Local filter array processing search queries and specific item unit matches
-    const filteredProducts = products.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const unitType = item.unit ? item.unit.toLowerCase() : '';
+    // SECTION 7.2 Core Logic: Process dual-filtering and numerical stock level sorting layers
+    const filteredAndSortedProducts = products
+        .filter(item => {
+            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const unitType = item.unit ? item.unit.toLowerCase() : '';
 
-        if (selectedCategory === 'All') {
+            if (selectedCategory === 'All') {
+                return matchesSearch;
+            } else if (selectedCategory === 'Pieces') {
+                return matchesSearch && (unitType === 'pieces' || unitType === 'pcs' || unitType === 'piece');
+            } else if (selectedCategory === 'Box') {
+                return matchesSearch && (unitType === 'box' || unitType === 'boxes');
+            } else if (selectedCategory === 'Pack') {
+                return matchesSearch && (unitType === 'pack' || unitType === 'packs');
+            }
             return matchesSearch;
-        } else if (selectedCategory === 'Pieces') {
-            // Handles common piece count variations standard to supermarkets
-            return matchesSearch && (unitType === 'pieces' || unitType === 'pcs' || unitType === 'piece');
-        } else if (selectedCategory === 'Box') {
-            // Filters items managed explicitly by boxes packaging unit type
-            return matchesSearch && (unitType === 'box' || unitType === 'boxes');
-        } else if (selectedCategory === 'Pack') {
-            // Filters items bundled or categorized by individual packs packaging
-            return matchesSearch && (unitType === 'pack' || unitType === 'packs');
+        })
+        .sort((a, b) => {
+            // Sort arrays mathematically depending on user toggle input metrics
+            if (stockSortOrder === 'low-to-high') {
+                return parseInt(a.stock || 0) - parseInt(b.stock || 0);
+            } else if (stockSortOrder === 'high-to-low') {
+                return parseInt(b.stock || 0) - parseInt(a.stock || 0);
+            }
+            return 0; // Maintain natural background real-time synchronization sequence 
+        });
+
+    // NEW HANDLER FOR SECTION 7.2: Loops through state configurations
+    const toggleStockSortHandler = () => {
+        if (stockSortOrder === 'none') {
+            setStockSortOrder('low-to-high');
+        } else if (stockSortOrder === 'low-to-high') {
+            setStockSortOrder('high-to-low');
+        } else {
+            setStockSortOrder('none');
         }
-        return matchesSearch;
-    });
+    };
 
     const handleAddProductPress = () => {
-        // Reset message tracking state before computing conditions
         setAccessDeniedMessage('');
 
-        if (!auth.currentUser) {
-            // Render the specific validation warning string requested on screen
+        if (userRole !== 'staff') {
             setAccessDeniedMessage("Access Denied: Log In Required (Only Supermarket Staff)");
 
-            // Auto dismissal configuration rule to hide banner smoothly after 4 seconds
             setTimeout(() => {
                 setAccessDeniedMessage('');
             }, 4000);
@@ -73,7 +106,6 @@ export default function ExploreScreen({ navigation }) {
         <View style={styles.container}>
             <Text style={styles.title}>Search</Text>
 
-            {/* Injected custom layout error handler directly beneath the typography element */}
             {accessDeniedMessage ? (
                 <View style={styles.warningBanner}>
                     <Text style={styles.warningText}>⚠️ {accessDeniedMessage}</Text>
@@ -88,10 +120,27 @@ export default function ExploreScreen({ navigation }) {
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                 />
-                <Text style={styles.filterIcon}>🎛️</Text>
+
+                {/* SECTION 7.2 UI MODULE: Interactive dynamic sorting switch control element */}
+                <TouchableOpacity
+                    style={[styles.sortBtn, stockSortOrder !== 'none' && styles.activeSortBtn]}
+                    onPress={toggleStockSortHandler}
+                >
+                    <Text style={styles.sortIcon}>
+                        {stockSortOrder === 'none' ? '🎛️' : stockSortOrder === 'low-to-high' ? '📉' : '📈'}
+                    </Text>
+                </TouchableOpacity>
             </View>
 
-            {/* Horizontal selection bar updated with the modified product unit categories */}
+            {/* Visual sorting verification badge layout */}
+            {stockSortOrder !== 'none' && (
+                <View style={styles.activeSortBadge}>
+                    <Text style={styles.activeSortBadgeText}>
+                        Sorting: {stockSortOrder === 'low-to-high' ? 'Critical Low Stock First' : 'High Volume Stock First'}
+                    </Text>
+                </View>
+            )}
+
             <View style={styles.categoryContainer}>
                 {['All', 'Pieces', 'Box', 'Pack'].map((category) => (
                     <TouchableOpacity
@@ -115,7 +164,7 @@ export default function ExploreScreen({ navigation }) {
             </View>
 
             <FlatList
-                data={filteredProducts}
+                data={filteredAndSortedProducts} // Injected multi-criteria computational array
                 keyExtractor={(item) => item.id}
                 ListEmptyComponent={
                     <View style={styles.center}>
@@ -125,7 +174,13 @@ export default function ExploreScreen({ navigation }) {
                 renderItem={({ item }) => (
                     <TouchableOpacity
                         style={styles.card}
-                        onPress={() => navigation.navigate('Detail', { product: item })}
+                        onPress={() => {
+                            if (userRole === 'staff') {
+                                navigation.navigate('ManageInventory', { product: item });
+                            } else {
+                                navigation.navigate('Detail', { product: item });
+                            }
+                        }}
                     >
                         <View style={styles.imgPlaceholder}><Text style={{ fontSize: 24 }}>📦</Text></View>
                         <View style={styles.cardInfo}>
@@ -142,9 +197,11 @@ export default function ExploreScreen({ navigation }) {
                 )}
             />
 
-            <TouchableOpacity style={styles.fab} onPress={handleAddProductPress}>
-                <Text style={styles.fabText}>＋ Add Product</Text>
-            </TouchableOpacity>
+            {userRole === 'staff' && (
+                <TouchableOpacity style={styles.fab} onPress={handleAddProductPress}>
+                    <Text style={styles.fabText}>＋ Add Product</Text>
+                </TouchableOpacity>
+            )}
         </View>
     );
 }
@@ -154,9 +211,14 @@ const styles = StyleSheet.create({
     title: { fontSize: 28, fontWeight: 'bold', marginBottom: 15 },
     searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
     searchBar: { flex: 1, backgroundColor: '#d0d4c8', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, fontSize: 16, color: '#000' },
-    filterIcon: { fontSize: 24, marginLeft: 12 },
 
-    // Symmetrical styling rules layout for the categorical filter pills
+    // Section 7.2 control structure styling layouts
+    sortBtn: { backgroundColor: '#d0d4c8', borderRadius: 12, padding: 12, marginLeft: 10, justifyContent: 'center', alignItems: 'center' },
+    activeSortBtn: { backgroundColor: '#1b4332' },
+    sortIcon: { fontSize: 20 },
+    activeSortBadge: { backgroundColor: '#1b4332', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12 },
+    activeSortBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
     categoryContainer: { flexDirection: 'row', marginBottom: 20, gap: 8 },
     categoryPill: { backgroundColor: '#d0d4c8', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#c0c4b8' },
     activeCategoryPill: { backgroundColor: '#1b4332', borderColor: '#1b4332' },
@@ -175,8 +237,6 @@ const styles = StyleSheet.create({
     fabText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#e2e4dc' },
     emptyText: { fontSize: 16, color: '#666', fontStyle: 'italic' },
-
-    // Alert notification visual banner attributes 
     warningBanner: { backgroundColor: '#b7094c', padding: 12, borderRadius: 12, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
     warningText: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center' }
 });
