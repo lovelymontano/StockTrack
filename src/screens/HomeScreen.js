@@ -101,6 +101,10 @@ export default function HomeScreen({ navigation }) {
         navigation.navigate('Inventory');
     };
 
+    const handleOpenMap = () => {
+        navigation.navigate('Map');
+    };
+
     return (
         <ScrollView contentContainerStyle={styles.scrollContainer} bounces={false}>
             <View style={styles.headerRow}>
@@ -142,11 +146,19 @@ export default function HomeScreen({ navigation }) {
                             <Text style={styles.smallCardLabel}>Critical Low / Out Items</Text>
                         </View>
                     </View>
+
+                    <TouchableOpacity style={styles.mapSecondaryButton} onPress={handleOpenMap}>
+                        <Text style={styles.mapSecondaryButtonText}>📍 View Store Locations Map</Text>
+                    </TouchableOpacity>
                 </View>
             ) : (
                 <View style={styles.heroSection}>
                     <Text style={styles.welcomeTitle}>Welcome to {'\n'}StockTrack!</Text>
                     <Text style={styles.welcomeSubtitle}>Your simple inventory companion.</Text>
+
+                    <TouchableOpacity style={styles.mapSecondaryButton} onPress={handleOpenMap}>
+                        <Text style={styles.mapSecondaryButtonText}>📍 Find Nearby Repositories</Text>
+                    </TouchableOpacity>
                 </View>
             )}
 
@@ -160,7 +172,6 @@ export default function HomeScreen({ navigation }) {
     );
 }
 
-// ... styles remain unchanged ...
 const styles = StyleSheet.create({
     scrollContainer: { flexGrow: 1, backgroundColor: '#e2e4dc', paddingHorizontal: 24, paddingVertical: 50, justifyContent: 'space-between' },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -184,6 +195,8 @@ const styles = StyleSheet.create({
     smallCardValue: { fontSize: 22, fontWeight: 'bold', color: '#111' },
     lowStockAlertText: { color: '#b7094c' },
     smallCardLabel: { fontSize: 11, color: '#666', textAlign: 'center', marginTop: 4, fontWeight: '500' },
+    mapSecondaryButton: { backgroundColor: '#fff', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 12, marginTop: 20, borderWidth: 1, borderColor: '#c0c4b8', width: '100%', alignItems: 'center' },
+    mapSecondaryButtonText: { color: '#162b32', fontSize: 15, fontWeight: '600' },
     button: { backgroundColor: '#2d6a4f', paddingVertical: 16, paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
     buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
     arrowIcon: { color: '#fff', fontSize: 18 }
