@@ -2,7 +2,8 @@ import { auth, db } from '../config/firebase';
 import {
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
-    signOut
+    signOut,
+    sendPasswordResetEmail
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -81,5 +82,19 @@ export const getUserRole = async (uid) => {
     } catch (error) {
         console.error('StockTrack RBAC Extraction Error:', error);
         return 'guest';
+    }
+};
+
+/**
+ * Password Reset Initialization Logic
+ * Sends a recovery sequence tracking link to the assigned registration address.
+ */
+export const resetPassword = async (email) => {
+    try {
+        await sendPasswordResetEmail(auth, email.trim());
+        return { success: true };
+    } catch (error) {
+        console.error("Password Reset Error: ", error.message);
+        throw error;
     }
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { loginUser, registerUser } from '../services/authService';
+import { loginUser, registerUser, resetPassword } from '../services/authService';
 
 export default function AuthScreen({ navigation }) {
     const [isLoginView, setIsLoginView] = useState(true);
@@ -53,6 +53,22 @@ export default function AuthScreen({ navigation }) {
         }
     };
 
+    const handleForgotPassword = async () => {
+        setWarningMessage(''); // Clear previous validation messages
+
+        if (!email.trim() || !email.includes('@')) {
+            setWarningMessage("Input Required: Enter a valid email address to request a reset link.");
+            return;
+        }
+
+        try {
+            await resetPassword(email);
+            alert("Success: A password reset link has been sent to your email.");
+        } catch (err) {
+            setWarningMessage(err.message);
+        }
+    };
+
     return (
         <View style={styles.container}>
             {/* UPDATED: Clean text navigation link layout using 'Back' text natively */}
@@ -89,6 +105,13 @@ export default function AuthScreen({ navigation }) {
             {/* Standard Text input layout containers */}
             <TextInput style={styles.input} placeholder="Registered Email Address" placeholderTextColor="#888" value={email} onChangeText={setEmail} autoCapitalize="none" />
             <TextInput style={styles.input} placeholder="Security Password" placeholderTextColor="#888" value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" />
+
+            {/* Supplementary interactive link managing automated authentication recovery resets */}
+            {isLoginView && (
+                <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPasswordContainer}>
+                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+            )}
 
             {/* Conditional Input Field: Displays ONLY when the Register Tab is active */}
             {!isLoginView && (
@@ -129,6 +152,10 @@ const styles = StyleSheet.create({
     activeTabText: { color: '#fff' },
 
     input: { backgroundColor: '#fff', padding: 16, borderRadius: 25, fontSize: 16, marginBottom: 16, borderWidth: 1, borderColor: '#ccc' },
+
+    // Layout alignment configurations for the supplementary access links
+    forgotPasswordContainer: { alignSelf: 'flex-end', marginRight: 8, marginBottom: 20 },
+    forgotPasswordText: { color: '#1b4332', fontSize: 14, fontWeight: '600', textDecorationLine: 'underline' },
 
     // Visual border highlight applied to the restricted input text area box
     staffInputHighlight: { borderColor: '#1b4332', borderWidth: 1.5, backgroundColor: '#f4f6f0' },

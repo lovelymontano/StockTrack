@@ -24,6 +24,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "232cef4e-4f45-4a25-8655-e2efca14fa8e"
+      }
+    },
+    "owner": "secretngani"
   }
 }

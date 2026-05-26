@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { auth, db } from '../config/firebase';
 import { collection, onSnapshot } from 'firebase/firestore';
@@ -9,21 +9,20 @@ import { useIsFocused } from '@react-navigation/native';
 
 export default function HomeScreen({ navigation }) {
     const isFocused = useIsFocused();
-    
-    // SECTION 7.4 States: Storage architectures to compute analytical values
+
     const [userRole, setUserRole] = useState('guest');
     const [roleLoading, setRoleLoading] = useState(true);
-    
-    // Quantitative structural dataset parameters
+
     const [totalProducts, setTotalProducts] = useState(0);
     const [totalValue, setTotalValue] = useState(0);
     const [lowStockCount, setLowStockCount] = useState(0);
 
+    // ANTI-SPAM TRACKER: Remembers previous stock status mapping
+    const previousStocksRef = useRef({});
+
     useEffect(() => {
-        // Step A: Request device permissions for system notifications upon landing
         registerForPushNotificationsAsync();
 
-        // Step B: Setup Real-time data sync listener with Firestore
         const productsRef = collection(db, 'products');
 
         const unsubscribe = onSnapshot(productsRef, (snapshot) => {
@@ -31,44 +30,53 @@ export default function HomeScreen({ navigation }) {
             let computedTotalValue = 0;
             let computedLowStock = 0;
 
+            const currentStocks = { ...previousStocksRef.current };
+
             snapshot.forEach((doc) => {
                 const data = doc.data();
-                const productItem = { id: doc.id, ...data };
-                productList.push(productItem);
-
-                // SECTION 7.4 Mathematical Computations:
                 const stockNum = parseInt(data.stock || 0);
                 const priceNum = parseFloat(data.price || 0);
+                const productId = doc.id;
+                const prevStock = currentStocks[productId];
 
-                // 1. Accumulate Total Financial Value of current supermarket assets
                 computedTotalValue += (stockNum * priceNum);
-
-                // 2. Compute critical inventory thresholds
                 if (stockNum <= 3) {
                     computedLowStock++;
                 }
 
-                // Step C: If any product changes state and drops strictly to 0, fire immediate local banner alert
-                if (stockNum === 0) {
-                    sendOutOfStockAlert(data.name);
+                // Notification Logic
+                if (prevStock !== undefined && prevStock !== stockNum) {
+
+                    // 1. OUT OF STOCK: Zero stock
+                    if (stockNum === 0) {
+                        sendOutOfStockAlert(`OUT OF STOCK: "${data.name}" is now out of stock.`);
+                    }
+                    // 2. LOW STOCK: 10 below
+                    else if (stockNum > 0 && stockNum <= 10) {
+                        sendOutOfStockAlert(`LOW STOCK: "${data.name}" is running low (${stockNum} remaining).`);
+                    }
+                    // 3. RESTOCK: 10 above and was previously out of stock or low stock
+                    else if (stockNum > 10 && (prevStock === 0 || prevStock <= 10)) {
+                        sendOutOfStockAlert(`RESTOCK: "${data.name}" is now available (${stockNum} in stock).`);
+                    }
                 }
+
+                currentStocks[productId] = stockNum;
+                productList.push({ id: productId, ...data });
             });
 
-            // Update analytical states across the dashboard interface
+            previousStocksRef.current = currentStocks;
             setTotalProducts(productList.length);
             setTotalValue(computedTotalValue);
             setLowStockCount(computedLowStock);
-
-            // Step D: Write sync block down into our secure hardware cacheService
             cacheProductsLocally(productList);
         }, (error) => {
-            console.error("Realtime sync failed, reverting to local architecture context:", error);
+            console.error("Realtime sync failed:", error);
         });
 
         return () => unsubscribe();
     }, []);
 
-    // Monitor authorization shifts every time window focus context triggers
     useEffect(() => {
         const checkRole = async () => {
             if (auth.currentUser) {
@@ -76,7 +84,6 @@ export default function HomeScreen({ navigation }) {
                     const role = await getUserRole(auth.currentUser.uid);
                     setUserRole(role);
                 } catch (e) {
-                    console.error("Role lookup blocked:", e);
                     setUserRole('guest');
                 }
             } else {
@@ -110,19 +117,16 @@ export default function HomeScreen({ navigation }) {
                 )}
             </View>
 
-            {/* SECTION 7.4: DYNAMIC DASHBOARD DISPLAY CONTROL LAYER */}
             {userRole === 'staff' ? (
                 <View style={styles.analyticsWrapper}>
                     <Text style={styles.sectionDashboardTitle}>Supermarket Metrics Dashboard</Text>
                     <Text style={styles.sectionDashboardSubtitle}>Real-time cloud statistical query parameters</Text>
-                    
-                    {/* Primary Large Highlight Metric Panel */}
+
                     <View style={styles.mainValueCard}>
                         <Text style={styles.mainValueLabel}>Total Estimated Inventory Capital</Text>
                         <Text style={styles.mainValueText}>₱ {totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                     </View>
 
-                    {/* Secondary Metrics Layout Row */}
                     <View style={styles.statsRow}>
                         <View style={styles.smallStatCard}>
                             <Text style={styles.smallCardIcon}>📦</Text>
@@ -140,7 +144,6 @@ export default function HomeScreen({ navigation }) {
                     </View>
                 </View>
             ) : (
-                /* Standard Welcome Block rendered specifically for basic guest consumer interfaces */
                 <View style={styles.heroSection}>
                     <Text style={styles.welcomeTitle}>Welcome to {'\n'}StockTrack!</Text>
                     <Text style={styles.welcomeSubtitle}>Your simple inventory companion.</Text>
@@ -157,6 +160,7 @@ export default function HomeScreen({ navigation }) {
     );
 }
 
+// ... styles remain unchanged ...
 const styles = StyleSheet.create({
     scrollContainer: { flexGrow: 1, backgroundColor: '#e2e4dc', paddingHorizontal: 24, paddingVertical: 50, justifyContent: 'space-between' },
     headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -164,12 +168,9 @@ const styles = StyleSheet.create({
     logoIcon: { fontSize: 24, marginRight: 6 },
     brandText: { fontSize: 20, fontWeight: 'bold', color: '#162b32', letterSpacing: 1 },
     loginStatus: { fontSize: 14, fontWeight: '700', textTransform: 'uppercase' },
-
     heroSection: { flex: 1, justifyContent: 'center', alignItems: 'center', marginVertical: 40 },
     welcomeTitle: { fontSize: 36, fontWeight: 'bold', color: '#000', lineHeight: 44, marginBottom: 12, textAlign: 'center' },
     welcomeSubtitle: { fontSize: 16, color: '#444', textAlign: 'center' },
-
-    // Section 7.4 Dashboard Component Layout Configurations
     analyticsWrapper: { flex: 1, justifyContent: 'center', marginVertical: 20 },
     sectionDashboardTitle: { fontSize: 22, fontWeight: 'bold', color: '#162b32', marginBottom: 4 },
     sectionDashboardSubtitle: { fontSize: 13, color: '#666', marginBottom: 20 },
@@ -183,7 +184,6 @@ const styles = StyleSheet.create({
     smallCardValue: { fontSize: 22, fontWeight: 'bold', color: '#111' },
     lowStockAlertText: { color: '#b7094c' },
     smallCardLabel: { fontSize: 11, color: '#666', textAlign: 'center', marginTop: 4, fontWeight: '500' },
-
     button: { backgroundColor: '#2d6a4f', paddingVertical: 16, paddingHorizontal: 24, borderRadius: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 20 },
     buttonText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
     arrowIcon: { color: '#fff', fontSize: 18 }

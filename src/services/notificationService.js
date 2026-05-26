@@ -12,15 +12,8 @@ if (Platform.OS !== 'web') {
     });
 }
 
-/**
- * Requests native hardware device permissions for displaying alerts
- */
 export const registerForPushNotificationsAsync = async () => {
-    // Safe exit point if testing inside a computer local host browser
-    if (Platform.OS === 'web') {
-        console.log('StockTrack Web Mode: Skipping mobile hardware alert handshake.');
-        return false;
-    }
+    if (Platform.OS === 'web') return false;
 
     try {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -31,33 +24,28 @@ export const registerForPushNotificationsAsync = async () => {
             finalStatus = status;
         }
 
-        if (finalStatus !== 'granted') {
-            console.log('StockTrack Notice: Notification permissions denied by user.');
-            return false;
-        }
-        return true;
+        return finalStatus === 'granted';
     } catch (error) {
-        console.error('Notification setup failed safely:', error);
+        console.error('Notification setup failed:', error);
         return false;
     }
 };
 
 /**
- * Triggers an immediate hardware alert when an item sells out completely
- * @param {string} productName - The name of the depleted product
+ * Triggers an immediate hardware alert
+ * @param {string} message - The full alert message to display
  */
-export const sendOutOfStockAlert = async (productName) => {
-    // If user is inside local host browser, print a clean backup web log instead of crashing
+export const sendOutOfStockAlert = async (message) => {
     if (Platform.OS === 'web') {
-        console.warn(`⚠️ WEB CONSOLE NOTICE: "${productName}" is completely out of stock!`);
+        console.warn(`⚠️ WEB CONSOLE NOTICE: ${message}`);
         return;
     }
 
     try {
         await Notifications.scheduleNotificationAsync({
             content: {
-                title: '⚠️ OUT OF STOCK ALERT',
-                body: `"${productName}" has completely run out of stock in the supermarket repository!`,
+                title: '⚠️ STOCK ALERT', // Ginawa nating generic na "STOCK ALERT"
+                body: message,          // Gagamitin na natin ang mismong message na galing sa HomeScreen
                 sound: true,
             },
             trigger: null, // trigger instantly

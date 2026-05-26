@@ -1,18 +1,19 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+// Added initialization and caching imports for Offline Mode support
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Dito tinatawag ang mga tinago mong credentials mula sa .env file
-import { 
-  FIREBASE_API_KEY, 
-  FIREBASE_AUTH_DOMAIN, 
-  FIREBASE_PROJECT_ID, 
-  FIREBASE_STORAGE_BUCKET, 
-  FIREBASE_MESSAGING_SENDER_ID, 
-  FIREBASE_APP_ID 
+// Fetch hidden credentials from the .env file
+import {
+  FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID
 } from '@env';
 
 const firebaseConfig = {
@@ -24,18 +25,23 @@ const firebaseConfig = {
   appId: FIREBASE_APP_ID
 };
 
-// I-initialize ang Firebase App context
+// Initialize the Firebase App context
 const app = initializeApp(firebaseConfig);
 
-// I-on ang Auth persistence para maalala ng phone ang login session ng salesman
-// Use browserLocalPersistence on web, AsyncStorage-backed persistence on native
+// Enable Auth persistence to persist user login sessions
 const auth = Platform.OS === 'web'
   ? initializeAuth(app, { persistence: browserLocalPersistence })
   : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
 
-// I-initialize ang Cloud Database at Storage services
-const db = getFirestore(app);
+// FORCE OFFLINE MODE: Forces Firestore to save data locally on the device storage
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
+
+// Initialize Cloud Storage
 const storage = getStorage(app);
 
-// I-export ang mga ito para magamit sa inyong forms at screens
+// Export instances for use across forms and screens
 export { auth, db, storage };
