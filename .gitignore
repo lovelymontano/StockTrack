@@ -16,3 +16,5 @@ dist
 *.ear
 *.zip
 *.tar.gz        
+
+google-services.json

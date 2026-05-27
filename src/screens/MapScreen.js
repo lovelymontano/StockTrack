@@ -1,19 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, Alert, Linking, Platform } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
+
+// Initialize MapLibre using free, public open-source raster map style tiles
+MapLibreGL.setAccessToken(null);
 
 export default function MapScreen() {
     const [loading, setLoading] = useState(true);
     const [userLocation, setUserLocation] = useState(null);
 
-    // Default center point perfectly calibrated for Bulan, Sorsogon
-    const [region, setRegion] = useState({
-        latitude: 12.6687,
-        longitude: 123.8694,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-    });
+    // Default center camera array perfectly calibrated for Bulan, Sorsogon [Longitude, Latitude]
+    const [centerCoordinate, setCenterCoordinate] = useState([123.8694, 12.6687]);
 
     // Hardcoded exact coordinates for the prominent supermarkets in Bulan, Sorsogon
     const localSupermarkets = [
@@ -50,19 +48,14 @@ export default function MapScreen() {
     useEffect(() => {
         const initializeMap = async () => {
             try {
-                // Request live GPS tracking permission (Device Feature Requirement 7.3)
+                // Request live GPS tracking permission (Device Feature Requirement)
                 let { status } = await Location.requestForegroundPermissionsAsync();
                 if (status === 'granted') {
                     let loc = await Location.getCurrentPositionAsync({});
                     setUserLocation(loc.coords);
                     
-                    // Smoothly center map to show both user position and nearby local stores
-                    setRegion({
-                        latitude: loc.coords.latitude,
-                        longitude: loc.coords.longitude,
-                        latitudeDelta: 0.025,
-                        longitudeDelta: 0.025,
-                    });
+                    // MapLibre uses standard GeoJSON arrays format: [Longitude, Latitude]
+                    setCenterCoordinate([loc.coords.longitude, loc.coords.latitude]);
                 }
             } catch (error) {
                 console.log("Location permission skipped, using default static grid:", error);
@@ -74,7 +67,7 @@ export default function MapScreen() {
         initializeMap();
     }, []);
 
-    // Deep linking launcher for external navigation routing maps
+    // Deep linking launcher for external navigation maps
     const openNavigation = (lat, lng, label) => {
         const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
         const latLng = `${lat},${lng}`;
@@ -107,23 +100,45 @@ export default function MapScreen() {
                 </Text>
             </View>
 
-            <MapView
+            <MapLibreGL.MapView
                 style={styles.map}
-                initialRegion={region}
-                showsUserLocation={true} // Renders standard live blue locator dot
+                logoEnabled={false}
+                attributionEnabled={false}
+                styleURL="https://demotiles.maplibre.org/style.json" // Free, public vector/raster map tile engine layout
             >
-                {/* Loop through embedded coordinates */}
+                {/* Handles camera coordinates routing positioning and tracking */}
+                <MapLibreGL.Camera
+                    zoomLevel={14}
+                    centerCoordinate={centerCoordinate}
+                    animationMode="flyTo"
+                    animationDuration={2000}
+                />
+
+                {/* Renders live blue pin locator if user device location permissions are active */}
+                {userLocation && (
+                    <MapLibreGL.PointAnnotation
+                        id="userLocationPin"
+                        coordinate={[userLocation.longitude, userLocation.latitude]}
+                    >
+                        <View style={styles.userLocationDot} />
+                    </MapLibreGL.PointAnnotation>
+                )}
+
+                {/* Loop through embedded marketplace locations array mapping custom PointAnnotations */}
                 {localSupermarkets.map((store) => (
-                    <Marker
+                    <MapLibreGL.PointAnnotation
                         key={store.id}
-                        coordinate={{ latitude: store.latitude, longitude: store.longitude }}
-                        title={store.name}
-                        description="Tap here to get real-time directions"
-                        pinColor="#2d6a4f"
-                        onCalloutPress={() => openNavigation(store.latitude, store.longitude, store.name)}
-                    />
+                        id={store.id}
+                        coordinate={[store.longitude, store.latitude]}
+                        onSelected={() => openNavigation(store.latitude, store.longitude, store.name)}
+                    >
+                        {/* Custom styled marker replacing standard pins */}
+                        <View style={styles.markerCircle}>
+                            <View style={styles.markerInnerCore} />
+                        </View>
+                    </MapLibreGL.PointAnnotation>
                 ))}
-            </MapView>
+            </MapLibreGL.MapView>
         </View>
     );
 }
@@ -145,6 +160,7 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 3,
+        zIndex: 10, // Ensures header layout overlays on top of the map layer
     },
     headerTitle: {
         fontSize: 20,
@@ -170,5 +186,31 @@ const styles = StyleSheet.create({
         marginTop: 10,
         color: '#162b32',
         fontWeight: '500'
+    },
+    markerCircle: {
+        width: 24,
+        height: 24,
+        backgroundColor: '#2d6a4f',
+        borderRadius: 12,
+        borderColor: '#fff',
+        borderWidth: 2,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 5,
+    },
+    markerInnerCore: {
+        width: 8,
+        height: 8,
+        backgroundColor: '#fff',
+        borderRadius: 4,
+    },
+    userLocationDot: {
+        width: 18,
+        height: 18,
+        backgroundColor: '#007AFF',
+        borderRadius: 9,
+        borderColor: '#fff',
+        borderWidth: 3,
+        elevation: 5,
     }
 });
