@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator, FlatList } from 'react-native';
 import { getCachedProducts, getLastSyncTime } from '../services/cacheService';
+import StockBadge from '../components/StockBadge';   // Optional: reuse your nice component
 
 export default function CachedInventoryScreen() {
     const [loading, setLoading] = useState(true);
@@ -44,8 +45,11 @@ export default function CachedInventoryScreen() {
                 contentContainerStyle={{ padding: 16 }}
                 renderItem={({ item }) => (
                     <View style={styles.itemCard}>
-                        <Text style={styles.itemTitle}>{item.name || item.title || 'Unnamed product'}</Text>
-                        <Text style={styles.itemSubtitle}>Qty: {item.quantity ?? item.qty ?? 'N/A'}</Text>
+                        <Text style={styles.itemTitle}>{item.name || 'Unnamed product'}</Text>
+                        <Text style={styles.itemSubtitle}>
+                            Price: ₱{parseFloat(item.price || 0).toFixed(2)}
+                        </Text>
+                        <StockBadge stock={item.stock} unit={item.unit} />   {/* Better UI */}
                     </View>
                 )}
                 ListEmptyComponent={() => (
@@ -70,9 +74,9 @@ const styles = StyleSheet.create({
     headerSubtitle: { fontSize: 13, color: '#e2e4dc' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#e2e4dc' },
     loadingText: { marginTop: 10, color: '#162b32' },
-    itemCard: { backgroundColor: '#f7f7f7', padding: 12, borderRadius: 8, marginBottom: 10 },
-    itemTitle: { fontSize: 16, fontWeight: '600' },
-    itemSubtitle: { fontSize: 13, color: '#555', marginTop: 6 },
-    emptyContainer: { padding: 24, alignItems: 'center' },
-    emptyText: { color: '#666' }
+    itemCard: { backgroundColor: '#f7f7f7', padding: 16, borderRadius: 12, marginBottom: 12 },
+    itemTitle: { fontSize: 17, fontWeight: '600', marginBottom: 6 },
+    itemSubtitle: { fontSize: 15, color: '#555' },
+    emptyContainer: { padding: 40, alignItems: 'center' },
+    emptyText: { color: '#666', fontSize: 16 }
 });

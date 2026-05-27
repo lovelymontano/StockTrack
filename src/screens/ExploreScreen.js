@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { subscribeToProducts } from '../services/productService';
-import { auth } from '../config/firebase';
-import { getUserRole } from '../services/authService';
+import useUserRole from '../hooks/useUserRole';
+import StockBadge from '../components/StockBadge';
 
 export default function ExploreScreen({ navigation }) {
     const [products, setProducts] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [userRole, setUserRole] = useState('guest');
+
+    // Replaced manual role-check logic with the shared custom hook
+    const { userRole } = useUserRole();
 
     // Track the selected inventory unit classification tab item
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -17,31 +19,20 @@ export default function ExploreScreen({ navigation }) {
     // Dynamic state tracker to manage the warning message layout on screen
     const [accessDeniedMessage, setAccessDeniedMessage] = useState('');
 
-    // NEW STATE FOR SECTION 7.2: Cycles criteria parameters ('none', 'low-to-high', 'high-to-low')
+    // Cycles criteria parameters ('none', 'low-to-high', 'high-to-low')
     const [stockSortOrder, setStockSortOrder] = useState('none');
 
     useEffect(() => {
-        // Step A: Real-time product subscription stream
+        // Real-time product subscription stream
         const unsubscribe = subscribeToProducts(
             (data) => { setProducts(data); setLoading(false); },
             (err) => { setError("Database sync failed."); setLoading(false); }
         );
 
-        // Step B: Role-Based Access checking stream loop
-        const checkUserAuthority = async () => {
-            if (auth.currentUser) {
-                const role = await getUserRole(auth.currentUser.uid);
-                setUserRole(role);
-            } else {
-                setUserRole('guest');
-            }
-        };
-
-        checkUserAuthority();
         return () => unsubscribe();
-    }, [auth.currentUser]);
+    }, []);
 
-    // SECTION 7.2 Core Logic: Process dual-filtering and numerical stock level sorting layers
+    // Core Logic: Process dual-filtering and numerical stock level sorting layers
     const filteredAndSortedProducts = products
         .filter(item => {
             const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -59,16 +50,15 @@ export default function ExploreScreen({ navigation }) {
             return matchesSearch;
         })
         .sort((a, b) => {
-            // Sort arrays mathematically depending on user toggle input metrics
             if (stockSortOrder === 'low-to-high') {
                 return parseInt(a.stock || 0) - parseInt(b.stock || 0);
             } else if (stockSortOrder === 'high-to-low') {
                 return parseInt(b.stock || 0) - parseInt(a.stock || 0);
             }
-            return 0; // Maintain natural background real-time synchronization sequence 
+            return 0;
         });
 
-    // NEW HANDLER FOR SECTION 7.2: Loops through state configurations
+    // Loops through sort state configurations
     const toggleStockSortHandler = () => {
         if (stockSortOrder === 'none') {
             setStockSortOrder('low-to-high');
@@ -84,10 +74,7 @@ export default function ExploreScreen({ navigation }) {
 
         if (userRole !== 'staff') {
             setAccessDeniedMessage("Access Denied: Log In Required (Only Supermarket Staff)");
-
-            setTimeout(() => {
-                setAccessDeniedMessage('');
-            }, 4000);
+            setTimeout(() => { setAccessDeniedMessage(''); }, 4000);
             return;
         }
         navigation.navigate('AddProduct');
@@ -121,7 +108,7 @@ export default function ExploreScreen({ navigation }) {
                     onChangeText={setSearchQuery}
                 />
 
-                {/* SECTION 7.2 UI MODULE: Interactive dynamic sorting switch control element */}
+                {/* Interactive dynamic sorting switch control element */}
                 <TouchableOpacity
                     style={[styles.sortBtn, stockSortOrder !== 'none' && styles.activeSortBtn]}
                     onPress={toggleStockSortHandler}
@@ -164,7 +151,7 @@ export default function ExploreScreen({ navigation }) {
             </View>
 
             <FlatList
-                data={filteredAndSortedProducts} // Injected multi-criteria computational array
+                data={filteredAndSortedProducts}
                 keyExtractor={(item) => item.id}
                 ListEmptyComponent={
                     <View style={styles.center}>
@@ -186,12 +173,8 @@ export default function ExploreScreen({ navigation }) {
                         <View style={styles.cardInfo}>
                             <Text style={styles.prodName}>{item.name}</Text>
                             <Text style={styles.prodPrice}>₱ {parseFloat(item.price).toFixed(2)}</Text>
-                            <View style={styles.stockRow}>
-                                <View style={[styles.indicator, { backgroundColor: item.stock <= 3 ? 'red' : 'green' }]} />
-                                <Text style={styles.prodStock}>
-                                    {item.stock <= 3 ? `Low: ${item.stock}` : `In Stock: ${item.stock}`} {item.unit}
-                                </Text>
-                            </View>
+                            {/* Replaced inline stock row with reusable StockBadge component */}
+                            <StockBadge stock={item.stock} unit={item.unit} />
                         </View>
                     </TouchableOpacity>
                 )}
@@ -211,32 +194,25 @@ const styles = StyleSheet.create({
     title: { fontSize: 28, fontWeight: 'bold', marginBottom: 15 },
     searchRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
     searchBar: { flex: 1, backgroundColor: '#d0d4c8', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, fontSize: 16, color: '#000' },
-
-    // Section 7.2 control structure styling layouts
     sortBtn: { backgroundColor: '#d0d4c8', borderRadius: 12, padding: 12, marginLeft: 10, justifyContent: 'center', alignItems: 'center' },
     activeSortBtn: { backgroundColor: '#1b4332' },
     sortIcon: { fontSize: 20 },
     activeSortBadge: { backgroundColor: '#1b4332', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 12 },
     activeSortBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-
     categoryContainer: { flexDirection: 'row', marginBottom: 20, gap: 8 },
     categoryPill: { backgroundColor: '#d0d4c8', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, borderColor: '#c0c4b8' },
     activeCategoryPill: { backgroundColor: '#1b4332', borderColor: '#1b4332' },
     categoryPillText: { fontSize: 13, fontWeight: '600', color: '#555' },
     activeCategoryPillText: { color: '#fff' },
-
     card: { backgroundColor: '#fff', borderRadius: 18, padding: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
     imgPlaceholder: { width: 70, height: 70, backgroundColor: '#f0f0f0', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
     cardInfo: { marginLeft: 16, flex: 1 },
     prodName: { fontSize: 18, fontWeight: 'bold' },
     prodPrice: { fontSize: 16, fontWeight: '600', marginVertical: 2 },
-    stockRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-    indicator: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-    prodStock: { fontSize: 14, color: '#555' },
     fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#1b4332', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 25, flexDirection: 'row', alignItems: 'center' },
     fabText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#e2e4dc' },
     emptyText: { fontSize: 16, color: '#666', fontStyle: 'italic' },
     warningBanner: { backgroundColor: '#b7094c', padding: 12, borderRadius: 12, marginBottom: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3, elevation: 3 },
-    warningText: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center' }
+    warningText: { color: '#fff', fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
 });
