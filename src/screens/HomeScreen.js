@@ -147,18 +147,12 @@ export default function HomeScreen({ navigation }) {
                         </View>
                     </View>
 
-                    <TouchableOpacity style={styles.mapSecondaryButton} onPress={handleOpenMap}>
-                        <Text style={styles.mapSecondaryButtonText}>📍 View Store Locations Map</Text>
-                    </TouchableOpacity>
                 </View>
             ) : (
                 <View style={styles.heroSection}>
                     <Text style={styles.welcomeTitle}>Welcome to {'\n'}StockTrack!</Text>
                     <Text style={styles.welcomeSubtitle}>Your simple inventory companion.</Text>
 
-                    <TouchableOpacity style={styles.mapSecondaryButton} onPress={handleOpenMap}>
-                        <Text style={styles.mapSecondaryButtonText}>📍 Find Nearby Repositories</Text>
-                    </TouchableOpacity>
                 </View>
             )}
 

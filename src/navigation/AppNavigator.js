@@ -12,7 +12,7 @@ import AddProductScreen from '../screens/AddProductScreen';
 import ManageInventoryScreen from '../screens/ManageInventoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AuthScreen from '../screens/AuthScreen';
-import MapScreen from '../screens/MapScreen';
+import CachedInventoryScreen from '../screens/CachedInventoryScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -32,9 +32,8 @@ function MainTabs() {
                         iconName = focused ? 'cube' : 'cube-outline';
                     } else if (route.name === 'Profile') {
                         iconName = focused ? 'person' : 'person-outline';
-                    } else if (route.name === 'Map') {
-                        // Custom map navigation icons added perfectly here
-                        iconName = focused ? 'map' : 'map-outline';
+                    } else if (route.name === 'Cache') {
+                        iconName = focused ? 'download' : 'download-outline';
                     }
 
                     return <Ionicons name={iconName} size={size} color={color} />;
@@ -48,7 +47,7 @@ function MainTabs() {
             <Tab.Screen name="Home" component={HomeScreen} />
             <Tab.Screen name="Inventory" component={ExploreScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
-            <Tab.Screen name="Map" component={MapScreen} options={{ title: 'Map' }} />
+            <Tab.Screen name="Cache" component={CachedInventoryScreen} options={{ title: 'Cache' }} />
         </Tab.Navigator>
     );
 }

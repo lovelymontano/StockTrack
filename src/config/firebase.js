@@ -1,28 +1,18 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence, browserLocalPersistence } from 'firebase/auth';
-// Added initialization and caching imports for Offline Mode support
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, persistentLocalCache } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Fetch hidden credentials from the .env file
-import {
-  FIREBASE_API_KEY,
-  FIREBASE_AUTH_DOMAIN,
-  FIREBASE_PROJECT_ID,
-  FIREBASE_STORAGE_BUCKET,
-  FIREBASE_MESSAGING_SENDER_ID,
-  FIREBASE_APP_ID
-} from '@env';
-
 const firebaseConfig = {
-  apiKey: FIREBASE_API_KEY,
-  authDomain: FIREBASE_AUTH_DOMAIN,
-  projectId: FIREBASE_PROJECT_ID,
-  storageBucket: FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: FIREBASE_MESSAGING_SENDER_ID,
-  appId: FIREBASE_APP_ID
+  apiKey: "AIzaSyAVuGb_od-_njN8CDmnZmSuaBOPWDOPl2c",
+  authDomain: "stocktrack-e47a0.firebaseapp.com",
+  projectId: "stocktrack-e47a0",
+  storageBucket: "stocktrack-e47a0.firebasestorage.app",
+  messagingSenderId: "37407505817",
+  appId: "1:37407505817:web:3c030f116fd3254127a708",
+  measurementId: "G-43ZD9Y37CP"
 };
 
 // Initialize the Firebase App context
@@ -33,12 +23,12 @@ const auth = Platform.OS === 'web'
   ? initializeAuth(app, { persistence: browserLocalPersistence })
   : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
 
-// FORCE OFFLINE MODE: Forces Firestore to save data locally on the device storage
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+// Initialize Firestore with persistent local cache on native, default on web
+const db = Platform.OS === 'web'
+  ? getFirestore(app)
+  : initializeFirestore(app, {
+    localCache: persistentLocalCache()
+  });
 
 // Initialize Cloud Storage
 const storage = getStorage(app);

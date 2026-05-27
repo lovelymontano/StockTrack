@@ -20,7 +20,6 @@ module.exports = {
                 backgroundColor: "#e2e4dc"
             },
             package: "com.stocktrack.app",
-            // Dynamically switches between the EAS Cloud Secret file and your local fallback path
             googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json"
         },
         web: {
@@ -33,9 +32,14 @@ module.exports = {
         },
         owner: "secretngani",
 
-        // This hooks the open-source map engine configurations directly into your app's native layout bundle
         plugins: [
-            "@maplibre/maplibre-react-native"
+            [
+                "expo-notifications",
+                {
+                    "icon": "./assets/icon.png",
+                    "color": "#1e7e34"
+                }
+            ]
         ]
     }
 };

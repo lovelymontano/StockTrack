@@ -15,6 +15,13 @@ dist
 *.war
 *.ear
 *.zip
-*.tar.gz        
+*.tar.gz         
 
 google-services.json
+
+# Exclude local Expo machine logs and cache folders
+.expo/
+
+# Expo Android builds 
+build.apk
+*.apk
